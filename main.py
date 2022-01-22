@@ -5,7 +5,7 @@ import os
 FPS = 50
 
 class Sprites():
-    pass
+    print('Hello')
 
 class AnimatedSprites():
     pass
@@ -83,7 +83,7 @@ start_screen()
 fruits = pygame.sprite.Group()
 sprite = pygame.sprite.Sprite()
 # определим его вид
-data = ['Red_Apple.png.jpg', 'Coconut.jpg','Green_Apple.png', 'Mango.png', 'Pineapple.png']
+data = ['Red_Apple.jpg', 'Coconut.jpg','Green_Apple.png', 'Mango.png', 'Pineapple.png']
 for im in data:
     sprite.image = load_image(im)
     sprite.rect = sprite.image.get_rect()
