@@ -1,14 +1,9 @@
 import pygame
 import sys
 import os
+import random
 
 FPS = 50
-
-class Sprites():
-    pass
-
-class AnimatedSprites():
-    pass
 
 
 def load_image(name, colorkey=None):
@@ -18,6 +13,26 @@ def load_image(name, colorkey=None):
         sys.exit()
     image = pygame.image.load(fullname)
     return image
+
+
+class Sprites(pygame.sprite.Sprite):
+    def __init__(self, im):
+        super().__init__(fruits)
+        self.image = load_image(im)
+        self.rect = self.image.get_rect()
+        self.rect.x = random.randrange(10, 700)
+        self.rect.y = 730
+
+
+    def update(self, *args):
+        self.rect = self.rect.move(0, -1)
+        if self.rect.y < 0:
+            self.rect.x = random.randrange(10, 700)
+            self.rect.y = 730
+
+
+class AnimatedSprites(pygame.sprite.Sprite):
+    pass
 
 
 def terminate():
@@ -62,7 +77,7 @@ tile_width = tile_height = 50
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self):
-        super().__init__(tiles_group, all_sprites)
+        super().__init__(all_sprites)
         self.image = tile_images
         self.rect = self.image.get_rect()
 
@@ -71,9 +86,8 @@ def generate_level():
     Tile()
 
 
+pygame.init()
 all_sprites = pygame.sprite.Group()
-tiles_group = pygame.sprite.Group()
-player_group = pygame.sprite.Group()
 cursor_group = pygame.sprite.Group()
 generate_level()
 running = True
@@ -82,7 +96,12 @@ clock = pygame.time.Clock()
 size = WIDTH, HEIGHT = 1280, 730
 screen = pygame.display.set_mode(size)
 start_screen()
-
+fruits = pygame.sprite.Group()
+sprite = pygame.sprite.Sprite()
+# определим его вид
+data = ['Red_Apple.png', 'Coconut.png','Green_Apple.png', 'Mango.png', 'Pineapple.png']
+for im in data:
+    Sprites(im)
 
 if __name__ == '__main__':
     cur_image = load_image('arrow.png')
@@ -93,14 +112,20 @@ if __name__ == '__main__':
     while running:
         screen.fill('white')
         all_sprites.draw(screen)
-        tiles_group.draw(screen)
+        fruits.draw(screen)
+        fruits.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEMOTION:
                 cursor.rect.x = event.pos[0]
                 cursor.rect.y = event.pos[1]
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    pass
         if pygame.mouse.get_focused():
             cursor_group.draw(screen)
+
         pygame.display.flip()
+
     pygame.quit()
