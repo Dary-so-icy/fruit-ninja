@@ -14,6 +14,7 @@ connect = sqlite3.connect('data.sqlite')
 cursor = connect.cursor()
 all_sprites = pygame.sprite.Group()
 FPS = 50
+MODE = 'Zen Mode'
 PRICE = {'Red_Apple.png': 1, 'Coconut.png': 1, 'melon.png': 1, 'Mango.png': 1, 'Pineapple.png': 1,
          'Watermelon.png': 1, 'Banana.png': 1, 'Kiwi.png': 1, 'Lemon.png': 1,
          'Orange.png': 1, 'Pear.png': 1}
@@ -134,13 +135,11 @@ class Menu:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     run, scene1 = self.dict(event.pos[0], event.pos[1])
                     if run:
-                        global scenes
-                        scene = scenes[scene1[7:]]
-
                         global start_time, extra_time
                         start_time = time.time()
                         extra_time = 0
-                        return scenes[scene1[7:]]
+                        global MODE
+                        MODE = scene1[7:]
                         return
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
@@ -193,11 +192,9 @@ class Sprites(pygame.sprite.Sprite):
             self.rect = self.rect.move(self.vx, 8)
 
     def check(self, pos):
-        global extra_time, score
-        if int(pos[0]) in range(self.rect.x, self.rect.x + self.rect[2]) and int(pos[1]) in range(self.rect.y,
-                                                                                                  self.rect.y +
-                                                                                                  self.rect[
-                                                                                                      3]) and self.name == 'Bomb.png':
+        global extra_time, score, MODE
+        if int(pos[0]) in range(self.rect.x, self.rect.x + self.rect[2]) and int(pos[1]) \
+                in range(self.rect.y, self.rect.y + self.rect[3]) and self.name == 'Bomb.png' and MODE != 'Classic Mode':
             extra_time += 10
             all_sprites.remove(self)
             return False
@@ -223,6 +220,9 @@ class Sprites(pygame.sprite.Sprite):
             return False
 
     def change(self):
+        global MODE
+        if self.name == 'Bomb.png' and MODE == 'Classic Mode':
+            game_over()
         global score
         score += 1
         im = NAME_CHANGE[self.name]
@@ -252,7 +252,8 @@ class ClassicMode():
         data1.remove('5seconds_Banana.png')
         data1.remove('Score_2x_Banana.png')
         for i in range(k):
-            Sprites(data1[random.randrange(0, 11)])
+            a = data1[random.randrange(0, 11)]
+            Sprites(a)
 
     def update(self):
         pass
@@ -267,7 +268,8 @@ class ZenMode():
         data1.remove('Score_2x_Banana.png')
         data1.remove('Bomb.png')
         for i in range(k):
-            Sprites(data1[random.randrange(0, 7)])
+            a = data1[random.randrange(0, 10)]
+            Sprites(a)
 
 
 class ArcadeMode():
@@ -278,9 +280,9 @@ class ArcadeMode():
             Sprites(data[random.randrange(0, 7)])
 
 
-scenes = {'Menu': Menu(),
-          'Classic Mode': ClassicMode().sprites_drawing(), 'Zen Mode': ZenMode().sprites_drawing(), 'Arcade Mode':
-              ArcadeMode().sprites_drawing()}
+scenes = {'Menu': Menu()}
+          #'Classic Mode': ClassicMode().sprites_drawing(), 'Zen Mode': ZenMode().sprites_drawing(), 'Arcade Mode':
+              #ArcadeMode().sprites_drawing()}
 scene = scenes['Menu']
 
 
@@ -309,8 +311,8 @@ def game_over():  # завершение игры, вывод счета
                       'Кликните чтобы продолжить']
     fon = pygame.transform.scale(load_image('background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
-    text_coord = 546
+    font = pygame.font.Font(None, 40)
+    text_coord = 446
     for line in game_over_text:
         string_rendered = font.render(line, True, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
@@ -423,9 +425,13 @@ extra_time = 0
 
 
 def job():
-    k = random.randrange(2, 4)
-    for i in range(k):
-        Sprites(data[random.randrange(0, 13)])
+    global MODE
+    if MODE == 'Zen Mode':
+        ZenMode().sprites_drawing()
+    elif MODE == 'Classic Mode':
+        ClassicMode().sprites_drawing()
+    else:
+        ArcadeMode().sprites_drawing()
 
 
 schedule.every(2).seconds.do(job)
