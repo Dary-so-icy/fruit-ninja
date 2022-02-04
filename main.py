@@ -6,6 +6,7 @@ import time
 import datetime
 import schedule
 import sqlite3
+import pygame.gfxdraw
 
 
 connect1 = sqlite3.connect('films_db.sqlite')
@@ -42,47 +43,86 @@ def load_image(name, colorkey=None):  # Обработка изображени�
     return image
 
 
-def write_text(sc, text, size, x, y):  # функции для вывода текста
+def write_text(sc, text, size, x, y, color=(255, 255, 255)):  # функции для вывода текста
     font = pygame.font.SysFont('bahnschrift', size)
-    rendered = font.render(text, True, (255, 255, 255))
-    rect = rendered.get_rect()
-    rect.midtop = (x, y)
-    screen.blit(rendered, rect)
+    rendered = font.render(text, True, color)
+    sc.blit(rendered, (x, y))
 
 
 run = False
+login = ''
 
 
 class Profile:
-    pass
+    def __init__(self, inp):
+        global cursor, connect, login
+        self.p_input = inp
+        self.text_wrong = ''
+        login = self.show()
+        print(login)
+        cursor.execute("""INSERT INTO res(login, result) VALUES(?, ?)""", (str(login), 0))
+        connect.commit()
+
+    def show(self):
+        fon = pygame.transform.scale(load_image('reg.jpg'), (WIDTH, HEIGHT))
+        str_input = ''
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.pos[0] in range(375, 875) and event.pos[1] in range(300, 370) and len(str_input) > 3:
+                        print(str_input)
+                        return str_input
+                    else:
+                        if len(str_input) == 0:
+                            self.text_wrong = 'Введите данные'
+                        else:
+                            self.text_wrong = 'Слишком короткое имя('
+                if self.p_input and event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        self.p_input = False
+                        return str_input
+                    elif event.key == pygame.K_BACKSPACE:
+                        str_input = str_input[:-1]
+                    else:
+                        if len(str_input) < 38:
+                            str_input += event.unicode
+            pygame.display.flip()
+            screen.blit(fon, (0, 0))
+            pygame.gfxdraw.box(screen, pygame.Rect(250, 100, 800, 150), (255, 255, 255, 150))
+            write_text(screen, str_input, 40, 300, 150, (0, 0, 0))
+            write_text(screen, self.text_wrong, 30, 300, 50, 'black')
+            button('white', 375, 300, 500, 70, screen, 'Ok!', 'black')
+
+
+
+def button(color, x, y, width, height, screen, text=None,
+           outline=None):  # добавление кнопки на экран(outliтe - цвет контура кнопки)
+    if outline:
+        pygame.draw.rect(screen, outline, (x - 2, y - 2, width + 4, height + 4), 0)
+
+    pygame.draw.rect(screen, color, (x, y, width, height), 0)
+
+    if text:
+        font = pygame.font.SysFont('bahnschrift', 20)
+        text = font.render(text, 10, (0, 0, 0))
+        screen.blit(text, (
+            x + (width / 2 - text.get_width() / 2), y + (height / 2 - text.get_height() / 2)))
 
 
 class Settings:  # настройки, вызываются клавишей esc (или нажатием на иконку)
 
-    def button(self, color, x, y, width, height, screen, text=None,
-               outline=None):  # добавление кнопки на экран(outliтe - цвет контура кнопки)
-        if outline:
-            pygame.draw.rect(screen, outline, (x - 2, y - 2, width + 4, height + 4), 0)
-
-        pygame.draw.rect(screen, color, (x, y, width, height), 0)
-
-        if text:
-            font = pygame.font.SysFont('bahnschrift', 20)
-            text = font.render(text, 10, (0, 0, 0))
-            screen.blit(text, (
-                x + (width / 2 - text.get_width() / 2), y + (height / 2 - text.get_height() / 2)))
-
     def draw_set(self):
         fon = pygame.transform.scale(load_image('fon3.jpg'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
-        self.button('white', 370, 232, 500, 70, screen, 'Хочу войти в свой аккаунт', 'black')
-        self.button('light grey', 370, 337, 500, 70, screen, 'Остаться в игре с текущим анонимном состоянии', 'black')
-        self.button('grey', 370, 442, 500, 70, screen, 'Поменять на темную тему [dangerous!]', 'black')
-        self.button('dark grey', 470, 547, 300, 50, screen, 'Вернуться на главное меню', 'black')
+        button('white', 370, 232, 500, 70, screen, 'Хочу войти в свой аккаунт', 'black')
+        button('light grey', 370, 337, 500, 70, screen, 'Остаться в игре с текущим анонимном состоянии', 'black')
+        button('grey', 370, 442, 500, 70, screen, 'Поменять на темную тему [dangerous!]', 'black')
+        button('dark grey', 470, 547, 300, 50, screen, 'Вернуться на главное меню', 'black')
         sp_pos_buttons = [(range(370, 870), range(232, 302)), (range(370, 870), range(337, 407)),
                           (range(370, 870), range(442, 512)), (range(470, 770), range(547, 597))]
         while True:
-            action = 0
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     terminate()
@@ -119,19 +159,17 @@ class Menu:
         screen.blit(fon, (0, 0))
         cursor_group = pygame.sprite.Group()
         cur_image = load_image('arrow.png')
-        cursor = pygame.sprite.Sprite(cursor_group)
-        cursor.image = cur_image
-        cursor.rect = cursor.image.get_rect()
-        pygame.mouse.set_visible(True)
-
+        cur1 = pygame.sprite.Sprite(cursor_group)
+        cur1.image = cur_image
+        cur1.rect = cur1.image.get_rect()
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     terminate()
                 if event.type == pygame.MOUSEMOTION:
-                    cursor.rect.x = event.pos[0]
-                    cursor.rect.y = event.pos[1]
-                    cursor_flag, text = self.dict(cursor.rect.x, cursor.rect.y)
+                    cur1.rect.x = event.pos[0]
+                    cur1.rect.y = event.pos[1]
+                    cursor_flag, text = self.dict(cur1.rect.x, cur1.rect.y)
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     run, scene1 = self.dict(event.pos[0], event.pos[1])
                     if run:
@@ -143,9 +181,14 @@ class Menu:
                         return
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
+                        pygame.mouse.set_visible(True)
                         set = Settings()
                         action = set.draw_set()
                         if action == 0:
+                            Profile(True)
+                        elif action == 1:
+                            pass
+                        else:
                             pass
                 # переход в настройки
             screen.blit(fon, (0, 0))
@@ -300,7 +343,15 @@ def draw_time(x, y):
 
 
 def game_over():  # завершение игры, вывод счета
-    global cursor1, connect1, score
+    global score, login
+    connect = sqlite3.connect('data.sqlite')
+    cursor = connect.cursor()
+    if login:
+        cursor.execute("""UPDATE res
+                                SET result = ?
+                                WHERE login = ?""", (str(score), login))
+        connect.commit()
+    global cursor1, connect1
     cursor1.execute("""INSERT INTO result(res) VALUES(?)""", (str(score), ))
     connect1.commit()
     global run
