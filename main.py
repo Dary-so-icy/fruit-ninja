@@ -3,19 +3,15 @@ import sys
 import os
 import random
 import time
-import datetime
 import schedule
 import sqlite3
 import pygame.gfxdraw
 
-
-connect1 = sqlite3.connect('films_db.sqlite')
-cursor1 = connect1.cursor()
+LIVES = 3
 connect = sqlite3.connect('data.sqlite')
 cursor = connect.cursor()
 all_sprites = pygame.sprite.Group()
 FPS = 50
-MODE = 'Zen Mode'
 PRICE = {'Red_Apple.png': 1, 'Coconut.png': 1, 'melon.png': 1, 'Mango.png': 1, 'Pineapple.png': 1,
          'Watermelon.png': 1, 'Banana.png': 1, 'Kiwi.png': 1, 'Lemon.png': 1,
          'Orange.png': 1, 'Pear.png': 1}
@@ -29,8 +25,7 @@ NAME_CHANGE = {'Red_Apple.png': ['apple12.png', 'apple2.png'], 'Coconut.png': ['
 data = ['Red_Apple.png', 'Coconut.png', 'Mango.png', 'Pineapple.png', 'Bomb.png', 'Score_2x_Banana.png',
         '5seconds_Banana.png',
         'Watermelon.png', 'Banana.png', 'Kiwi.png', 'Lemon.png', 'Orange.png', 'Pear.png', 'melon.png']
-
-global score
+MODE = 'Zen Mode'
 score = 0
 
 
@@ -55,13 +50,20 @@ login = ''
 
 class Profile:
     def __init__(self, inp):
-        global cursor, connect, login
+        global login
         self.p_input = inp
         self.text_wrong = ''
         login = self.show()
-        print(login)
-        cursor.execute("""INSERT INTO res(login, result) VALUES(?, ?)""", (str(login), 0))
-        connect.commit()
+        if login:
+            con = sqlite3.connect("data.sqlite")
+            cursor = con.cursor()
+            rer = cursor.execute("""SELECT login FROM res""")
+            if login not in rer:
+                cursor.execute("""INSERT INTO res(login, result) VALUES(?, ?)""", (str(login), 0))
+            connect.commit()
+            connect.close()
+        else:
+            return
 
     def show(self):
         fon = pygame.transform.scale(load_image('reg.jpg'), (WIDTH, HEIGHT))
@@ -74,6 +76,10 @@ class Profile:
                     if event.pos[0] in range(375, 875) and event.pos[1] in range(300, 370) and len(str_input) > 3:
                         print(str_input)
                         return str_input
+                    elif not (event.pos[0] in range(375, 875) and event.pos[1] in range(300, 370)):
+                        pass
+                    elif event.pos[0] in range(375, 875) and event.pos[1] in range(400, 470):
+                        return ''
                     else:
                         if len(str_input) == 0:
                             self.text_wrong = 'Введите данные'
@@ -86,7 +92,7 @@ class Profile:
                     elif event.key == pygame.K_BACKSPACE:
                         str_input = str_input[:-1]
                     else:
-                        if len(str_input) < 38:
+                        if len(str_input) < 25:
                             str_input += event.unicode
             pygame.display.flip()
             screen.blit(fon, (0, 0))
@@ -94,11 +100,11 @@ class Profile:
             write_text(screen, str_input, 40, 300, 150, (0, 0, 0))
             write_text(screen, self.text_wrong, 30, 300, 50, 'black')
             button('white', 375, 300, 500, 70, screen, 'Ok!', 'black')
-
+            button('grey', 375, 400, 500, 70, screen, 'Вернуться назад', 'black')
 
 
 def button(color, x, y, width, height, screen, text=None,
-           outline=None):  # добавление кнопки на экран(outliтe - цвет контура кнопки)
+           outline=None):
     if outline:
         pygame.draw.rect(screen, outline, (x - 2, y - 2, width + 4, height + 4), 0)
 
@@ -154,7 +160,7 @@ class Menu:
     def draw(self):
         cursor_flag = False
         text = ''
-        global run, scene
+        global run, scene, login
         fon = pygame.transform.scale(load_image('fon.png'), (WIDTH, HEIGHT))
         screen.blit(fon, (0, 0))
         cursor_group = pygame.sprite.Group()
@@ -173,11 +179,12 @@ class Menu:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     run, scene1 = self.dict(event.pos[0], event.pos[1])
                     if run:
-                        global start_time, extra_time
-                        start_time = time.time()
-                        extra_time = 0
                         global MODE
                         MODE = scene1[7:]
+                        global start_time, extra_time, LIVES
+                        start_time = time.time()
+                        extra_time = 0
+                        LIVES = 3
                         return
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
@@ -192,10 +199,19 @@ class Menu:
                             pass
                 # переход в настройки
             screen.blit(fon, (0, 0))
+            if login:
+                con = sqlite3.connect("data.sqlite")
+                cursor = con.cursor()
+                s_l = cursor.execute("""SELECT result FROM res WHERE login = ?""", (login,)).fetchone()[0]
+                if s_l:
+                    write_text(screen, f'Меня зовут {login} и мой лучший счет {s_l}!', 20, 50, 680)
+                    write_text(screen, f'Меня не победить!', 20, 50, 700)
+                else:
+                    write_text(screen, f'Меня зовут {login}!', 20, 50, 690)
             if cursor_flag:
                 pygame.mouse.set_visible(False)
                 cursor_group.draw(screen)
-                write_text(screen, text, 50, 650, 550)
+                write_text(screen, text, 50, 450, 550)
             else:
                 pygame.mouse.set_visible(True)
             pygame.display.flip()
@@ -237,7 +253,8 @@ class Sprites(pygame.sprite.Sprite):
     def check(self, pos):
         global extra_time, score, MODE
         if int(pos[0]) in range(self.rect.x, self.rect.x + self.rect[2]) and int(pos[1]) \
-                in range(self.rect.y, self.rect.y + self.rect[3]) and self.name == 'Bomb.png' and MODE != 'Classic Mode':
+                in range(self.rect.y,
+                         self.rect.y + self.rect[3]) and self.name == 'Bomb.png' and MODE != 'Classic Mode':
             extra_time += 10
             all_sprites.remove(self)
             return False
@@ -268,11 +285,12 @@ class Sprites(pygame.sprite.Sprite):
             game_over()
         global score
         score += 1
-        im = NAME_CHANGE[self.name]
-        k = 0
-        for el in im:
-            Sprites(el, True, [self.rect[0] + 50 * k, self.rect[1], self.rect[2], self.rect[3]])
-            k += 1
+        if self.name != 'Bomb.png':
+            im = NAME_CHANGE[self.name]
+            k = 0
+            for el in im:
+                Sprites(el, True, [self.rect[0] + 50 * k, self.rect[1], self.rect[2], self.rect[3]])
+                k += 1
         all_sprites.remove(self)
 
     def sliced(self):
@@ -324,8 +342,6 @@ class ArcadeMode():
 
 
 scenes = {'Menu': Menu()}
-          #'Classic Mode': ClassicMode().sprites_drawing(), 'Zen Mode': ZenMode().sprites_drawing(), 'Arcade Mode':
-              #ArcadeMode().sprites_drawing()}
 scene = scenes['Menu']
 
 
@@ -339,37 +355,41 @@ def draw_score(x, y, score):  # рисует счет
 
 
 def draw_time(x, y):
-    write_text(screen, f'Осталось {str(60 - round(end_time - start_time + extra_time))} секунд', 30, x, y)
+    if MODE != 'Classic Mode':
+        if MODE == 'Zen Mode':
+            write_text(screen, f'Осталось {str(90 - round(end_time - start_time + extra_time))} секунд', 30, x, y)
+        else:
+            write_text(screen, f'Осталось {str(60 - round(end_time - start_time + extra_time))} секунд', 30, x, y)
+    else:
+        global LIVES
+        write_text(screen, '*' * LIVES, 90, x, y)
 
 
-def game_over():  # завершение игры, вывод счета
+def game_over():
     global score, login
     connect = sqlite3.connect('data.sqlite')
     cursor = connect.cursor()
     if login:
         cursor.execute("""UPDATE res
-                                SET result = ?
-                                WHERE login = ?""", (str(score), login))
+                            SET result = ?
+                            WHERE login = ?""", (score, login))
         connect.commit()
-    global cursor1, connect1
-    cursor1.execute("""INSERT INTO result(res) VALUES(?)""", (str(score), ))
-    connect1.commit()
     global run
-    list_score = cursor1.execute("""SELECT res FROM result """).fetchall()
+    list_score = cursor.execute("""SELECT result FROM res """).fetchall()
     r = max(list_score)
     game_over_text = [f'Вы набрали {score} очков',
-                      f'Лучший результат {r[0]} ',
+                      f'Лучший результат в игре {r[0]} ',
                       'Кликните чтобы продолжить']
     fon = pygame.transform.scale(load_image('background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 40)
-    text_coord = 446
+    font = pygame.font.Font(None, 50)
+    text_coord = 250
     for line in game_over_text:
         string_rendered = font.render(line, True, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 550
+        intro_rect.x = 250
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
     score = 0
@@ -408,10 +428,12 @@ def start_screen2():
                   "Zen - нет бомб, жизни за пропущенный фрукт не отнимают,",
                   "  но у вас есть всего лишь 90 секунд, чтобы поставить рекорд.",
                   "Classic – у вас есть три жизни, которые отнимаются, если вы пропускаете фрукт.",
+                  "За каждые 10 очков восстанавливается жизнь."
                   "  Касание бомб приводит к неизбежному game over.",
                   "Arcade – режим с ограниченным временем (одна минута),",
                   "  помимо обычных фруктов игра будет подбрасывать вам особые бананы,",
-                  "  некоторые из них активируют режим slo-mo, ускоряют появление фруктов на экране или удваивают очки."
+                  "  некоторые из них активируют режим slo-mo, ускоряют появление фруктов на экране или удваивают очки.",
+                  "esc - клавиша для выхода в настройки."
                   ]
     fon2 = pygame.transform.scale(load_image('fon3.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon2, (0, 0))
@@ -470,9 +492,17 @@ screen = pygame.display.set_mode(size)
 start_screen1()
 start_time = time.time()
 extra_time = 0
+h = 0
 
 
 # Score_2x_Banana удваивает счет, 10seconds_Banana добавляет 10 секунд времени, Bomb отнимает 5 секунд
+def life_change(e):
+    global MODE, LIVES, score, h
+    if MODE == 'Classic Mode' and e.name != 'Bomb.png':
+        LIVES -= 1
+    if score - h > 10:
+        LIVES += 1
+        h += 10
 
 
 def job():
@@ -499,11 +529,19 @@ if __name__ == '__main__':
                 get_click(event.pos)
         for e in all_sprites:
             if e.rect.x < 0 or e.rect.x > WIDTH or e.rect.y < 0 or e.rect.y > HEIGHT:
+                if not e.cut:
+                    life_change(e)
                 all_sprites.remove(e)
-        if round(end_time - start_time + extra_time) >= 60:
+        #global MODE
+        if MODE == 'Zen Mode' and round(end_time - start_time + extra_time) >= 90:
             game_over()
+        if MODE == 'Arcade Mode' and round(end_time - start_time + extra_time) >= 60:
+            game_over()
+        if MODE == 'Classic Mode' and LIVES <= 0:
+            game_over()
+        #print(LIVES)
         all_sprites.draw(screen)
         all_sprites.update()
         pygame.display.flip()
-        clock.tick(50)
+        clock.tick(40)
     pygame.quit()
