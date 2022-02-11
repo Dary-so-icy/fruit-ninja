@@ -504,8 +504,9 @@ def life_change(e):
     if MODE == 'Classic Mode' and e.name != 'Bomb.png':
         LIVES -= 1
     if score - h > 10:
-        LIVES += 1
-        h += 10
+        if LIVES < 3:
+            LIVES += 1
+            h += 10
 
 
 def job():
