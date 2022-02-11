@@ -57,11 +57,14 @@ class Profile:
         if login:
             con = sqlite3.connect("data.sqlite")
             cursor = con.cursor()
-            rer = cursor.execute("""SELECT login FROM res""")
-            if login not in rer:
+            rer = cursor.execute("""SELECT login FROM res""").fetchall()
+            rer1 = []
+            for el in rer:
+                rer1.append(el[0])
+            if login not in rer1:
                 cursor.execute("""INSERT INTO res(login, result) VALUES(?, ?)""", (str(login), 0))
-            connect.commit()
-            connect.close()
+            con.commit()
+            con.close()
         else:
             return
 
@@ -73,18 +76,18 @@ class Profile:
                 if event.type == pygame.QUIT:
                     terminate()
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.pos[0] in range(375, 875) and event.pos[1] in range(300, 370) and len(str_input) > 3:
-                        print(str_input)
-                        return str_input
-                    elif not (event.pos[0] in range(375, 875) and event.pos[1] in range(300, 370)):
-                        pass
+                    if event.pos[0] in range(375, 875) and event.pos[1] in range(300, 370):
+                        if len(str_input) == 0:
+                            self.text_wrong = 'Введите данные'
+                        elif len(str_input) < 3:
+                            self.text_wrong = 'Слишком короткое имя('
+                        else:
+                            return str_input
                     elif event.pos[0] in range(375, 875) and event.pos[1] in range(400, 470):
                         return ''
                     else:
-                        if len(str_input) == 0:
-                            self.text_wrong = 'Введите данные'
-                        else:
-                            self.text_wrong = 'Слишком короткое имя('
+                        pass
+
                 if self.p_input and event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN:
                         self.p_input = False
@@ -124,7 +127,6 @@ class Settings:  # настройки, вызываются клавишей esc
         screen.blit(fon, (0, 0))
         button('white', 370, 232, 500, 70, screen, 'Хочу войти в свой аккаунт', 'black')
         button('light grey', 370, 337, 500, 70, screen, 'Остаться в игре с текущим анонимном состоянии', 'black')
-        button('grey', 370, 442, 500, 70, screen, 'Поменять на темную тему [dangerous!]', 'black')
         button('dark grey', 470, 547, 300, 50, screen, 'Вернуться на главное меню', 'black')
         sp_pos_buttons = [(range(370, 870), range(232, 302)), (range(370, 870), range(337, 407)),
                           (range(370, 870), range(442, 512)), (range(470, 770), range(547, 597))]
@@ -197,12 +199,13 @@ class Menu:
                             pass
                         else:
                             pass
-                # переход в настройки
             screen.blit(fon, (0, 0))
             if login:
                 con = sqlite3.connect("data.sqlite")
                 cursor = con.cursor()
                 s_l = cursor.execute("""SELECT result FROM res WHERE login = ?""", (login,)).fetchone()[0]
+                con.commit()
+                con.close()
                 if s_l:
                     write_text(screen, f'Меня зовут {login} и мой лучший счет {s_l}!', 20, 50, 680)
                     write_text(screen, f'Меня не победить!', 20, 50, 700)
@@ -437,7 +440,7 @@ def start_screen2():
                   ]
     fon2 = pygame.transform.scale(load_image('fon3.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon2, (0, 0))
-    font = pygame.font.Font(None, 50)
+    font = pygame.font.Font(None, 45)
     text_coord = 30
     for line in intro_text:
         string_rendered = font.render(line, 10, pygame.Color('White'))
